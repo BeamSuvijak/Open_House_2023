@@ -16,7 +16,7 @@ while True:
 
     _, frame = cap.read()
 
-    frame_height, frame_width, _ = frame.shape
+    frame_height, frame_width = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     output = hand_detector.process(rgb_frame)
     hands = output.multi_hand_landmarks
@@ -59,7 +59,11 @@ while True:
             x_pow = math.pow(x0 - x1, 2)
             y_pow = math.pow(y0 - y1, 2)
             distance = math.sqrt(x_pow + y_pow)
+            max_distance = frame_width * 0.8
+            if distance > max_distance:
+                distance = max_distance
             print(f'distance = {distance}')
+            print(f'power = {(distance/max_distance)*100}%')
 
             # Calculate the angle
             angle = math.degrees(math.atan2(y1 - y0, x1 - x0))
