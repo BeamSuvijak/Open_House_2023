@@ -8,7 +8,7 @@ def Run_Game():
 
     # Constants
     global WIDTH, HEIGHT
-    WIDTH, HEIGHT = 1920, 1080
+    WIDTH, HEIGHT = 1080, 720
     FPS = 60
 
     # Colors
@@ -55,6 +55,8 @@ def Run_Game():
 
         def display(self):
             pygame.draw.rect(screen, self.Color, (self.player_x, self.player_y, self.player_size_x, self.player_size_y))
+
+
 
         def keepin(self):
             if self.player_y > HEIGHT - self.player_size_y:
@@ -132,6 +134,14 @@ def Run_Game():
 
         def arrow_display(self):
             pygame.draw.circle(screen, BLUE, [self.arrow_x, self.arrow_y], self.arrow_radius, 0)
+            xori = self.arrow_x
+            yori = self.arrow_y
+            side = self.throw_power * math.cos(math.radians(a.throw_angle))
+            up = self.throw_power * math.sin(math.radians(a.throw_angle))
+            if p1.TURN:
+                pygame.draw.line(screen, BLACK, (xori, yori), (xori + side, yori - up), 10)
+            elif p2.TURN:
+                pygame.draw.line(screen, BLACK, (xori, yori), (xori - side, yori - up), 10)
 
         def keepin(self):
             if self.arrow_y > HEIGHT - self.arrow_radius:
@@ -168,8 +178,8 @@ def Run_Game():
 
     def char_setting():
         global p1,p2,a
-        p1 = Player(50,80,500,-1,0,0,True,RED)
-        p2 = Player(50, 80, (WIDTH - 500) , -1, 0,0, True,BLACK)
+        p1 = Player(50,80,300,-1,0,0,True,RED)
+        p2 = Player(50, 80, (WIDTH - 300) , -1, 0,0, True,BLACK)
         p2.TURN = False
 
         a = arrow(10,p1.player_x+p1.player_size_x+10,HEIGHT - (p1.player_size_y * 0.8),0,0,0,True)
@@ -266,19 +276,21 @@ def Run_Game():
             print(f'hit player{p_turn}')
             if p_turn == 1:
                 p1.is_hit()
-                konk = random.randint(-5,-1)
+                konk = random.randint(-3,-1)
                 p1.knockback(konk)
                 if p1.health <= 0:
                     game_over = True
                     p2.win = True
             else:
                 p2.is_hit()
-                konk = random.randint(1, 5)
+                konk = random.randint(1, 3)
                 p2.knockback(konk)
                 if p2.health <= 0:
                     game_over = True
                     p1.win = True
             a.arrow_touch_ground = True
+
+
 
         # Clear the screen
         screen.fill(WHITE)
@@ -296,4 +308,5 @@ def Run_Game():
         clock.tick(FPS)
 
 if __name__ == "__main__":
+    game_over = False
     Run_Game()
