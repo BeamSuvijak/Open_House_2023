@@ -1,16 +1,22 @@
 import cv2
 import mediapipe as mp
 import math
+import threading as Thread
+import socket
+import sys
+import time
+import json
 def detect_hand_gesture():
     cap = cv2.VideoCapture(0)
-
+    No = 1
     hand_detector = mp.solutions.hands.Hands()
     drawing_utils = mp.solutions.drawing_utils
     mpHands = mp.solutions.hands
     hands = mpHands.Hands()
     mpDraw = mp.solutions.drawing_utils
-
-
+    claping = True
+    global DATA
+    DATA = {}
     clap_cou = 0
     while True:
         wrist0 = (0, 0)
@@ -26,7 +32,7 @@ def detect_hand_gesture():
         Power = 0
         distance_threshold = 100
         angle = 0
-        claping = True
+
 
         if hands:
             max_landmarks = -1
@@ -67,24 +73,24 @@ def detect_hand_gesture():
                             index_value = A_hand.classification[0].index
                             if y0 < y1:
                                 if index_value == 1 and hand_idx == 1:
-                                    if id == 4:
+                                    if id == 0:
                                         thumbx = int(landmark.x * frame_width)
                                         thumby = int(landmark.y * frame_height)
-                                    if id == 20:
+                                    if id == 12:
                                         indexx = int(landmark.x * frame_width)
                                         indexy = int(landmark.y * frame_height)
                             else:
                                 if index_value == 0 and hand_idx == 0:
-                                    if id == 4:
+                                    if id == 0:
                                         thumbx = int(landmark.x * frame_width)
                                         thumby = int(landmark.y * frame_height)
-                                    if id == 20:
+                                    if id == 12:
                                         indexx = int(landmark.x * frame_width)
                                         indexy = int(landmark.y * frame_height)
                 clap = ((thumbx - indexx) ** 2 + (thumby - indexy) ** 2) ** 0.5
                 if clap > distance_threshold:
                     clap_cou += 1
-                    if clap_cou >= 20:
+                    if clap_cou >= 15:
                         clap_cou = 0
                         claping = False
                         print('shoot')
@@ -93,31 +99,64 @@ def detect_hand_gesture():
                 y_pow = math.pow(y0 - y1, 2)
                 distance = math.sqrt(x_pow + y_pow)
                 #print(f'distance = {distance}')
-                max_distance = frame_width * 0.5
+                max_distance = frame_width * 0.8
                 if distance > max_distance:
                     distance = max_distance
                 #print(f'distance = {distance}')
                 Power = (distance / max_distance) * 100
+                Power = int(Power)
                 #print(f'power = {Power}%')
 
                 # Check if the lower hand is raised above the upper hand
 
 
                 # Calculate the angle
-                angle = math.degrees(math.atan2(x1 - x0, y1 - y0))
+                if No == 2:
+                    angle = math.degrees(math.atan2(x1 - x0, y1 - y0))
+                else:
+                    angle = math.degrees(math.atan2(y1 - y0, x1 - x0))
                 if angle < 0:
                     angle += 360
                 #print(f'angle = {(angle)%90}')
-
+        angle = int(angle % 90)
         DATA = {
+            "Player" : No,
             "Power" : Power,
-            "Angle" : angle%90,
+            "Angle" : angle,
             "Clap" : claping
         }
         claping = True
+        #print(sys.getsizeof(DATA))
         cv2.imshow('Check', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             exit(0)
 
+def Run_Client():
+    global DATA
+    encode_DATA = json.dumps(DATA).encode(FORMAT)
+    client.send(encode_DATA)
+    print(DATA)
+
+
 if __name__ == "__main__":
-    detect_hand_gesture()
+
+    HEADER = 64
+    PORT = 5050
+    SERVER = socket.gethostbyname(socket.gethostname())
+    #SERVER = str(input("Server IP : "))
+
+    SERVER = "172.20.10.3"
+    print(SERVER)
+    FORMAT = 'utf-8'
+    disconnect_msg = "Disconnect"
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect((SERVER,PORT))
+    connect = True
+
+    hand_detect = Thread.Thread(target=detect_hand_gesture)
+    hand_detect.start()
+    DATA = {}
+    while connect:
+        Client_Job = Thread.Thread(target=Run_Client)
+        Client_Job.start()
+        time.sleep(0.1)
