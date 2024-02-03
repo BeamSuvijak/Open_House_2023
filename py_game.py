@@ -1,6 +1,7 @@
 import pygame
 import sys
 import math
+import random
 
 # Initialize Pygame
 pygame.init()
@@ -19,6 +20,7 @@ GREEN = (0, 255, 0)
 
 # Gravity
 gravity = 1
+game_over = False
 
 class Player:
     #player_size_x, player_size_y, player_x, player_y, player_velocity, player_touch_ground
@@ -27,25 +29,29 @@ class Player:
     player_size_y = 60
     player_x = WIDTH // 2 - player_size_x // 2
     player_y = HEIGHT - player_size_y
-    player_velocity = 0
+    player_velocity_x = 0
+    player_velocity_y = 0
     player_touch_ground = True
     Color = BLACK
     TURN = True
     health = 100
+    win = False
 
-    def __init__(self,sizex,sizey,x,y,velo,touch,color):
+    def __init__(self,sizex,sizey,x,y,velox,veloy,touch,color):
         self.player_size_x = sizex
         self.player_size_y = sizey
         self.player_x = x
         if y != -1:
             self.player_y = y
-        self.player_velocity = velo
+        self.player_velocity_x = velox
+        self.player_velocity_y = veloy
         self.player_touch_ground = touch
         self.Color = color
 
     def player_gravity(self):
-        self.player_y += self.player_velocity
-        self.player_velocity += gravity
+        self.player_y += self.player_velocity_y
+        self.player_velocity_y += gravity
+        self.player_x += self.player_velocity_x
 
     def display(self):
         pygame.draw.rect(screen, self.Color, (self.player_x, self.player_y, self.player_size_x, self.player_size_y))
@@ -53,11 +59,22 @@ class Player:
     def keepin(self):
         if self.player_y > HEIGHT - self.player_size_y:
             self.player_y = HEIGHT - self.player_size_y
-            self.player_velocity = 0
+            self.player_velocity_y = 0
+            self.player_velocity_x = 0
             self.player_touch_ground = True
 
     def is_turn(self):
         return self.TURN
+
+    def is_hit(self):
+        self.health -= 20
+
+    def knockback(self,x):
+        self.player_y += 5
+        self.player_velocity_y -= 15
+        self.player_velocity_x += x
+
+
 class arrow:
     #global arrow_radius, arrow_x, arrow_y, arrow_velocity_y, arrow_velocity_x, arrow_angle, arrow_touch_ground
     # arrom variables
@@ -151,8 +168,8 @@ class arrow:
 
 def char_setting():
     global p1,p2,a
-    p1 = Player(50,80,100,-1,0,True,RED)
-    p2 = Player(50, 80, (WIDTH - 100) , -1, 0, True,BLACK)
+    p1 = Player(50,80,500,-1,0,0,True,RED)
+    p2 = Player(50, 80, (WIDTH - 500) , -1, 0,0, True,BLACK)
     p2.TURN = False
 
     a = arrow(10,p1.player_x+p1.player_size_x+10,HEIGHT - (p1.player_size_y * 0.8),0,0,0,True)
@@ -163,7 +180,7 @@ char_setting()
 
 # Pygame setup
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Throwing Game")
+pygame.display.set_caption("Bow master!!!")
 clock = pygame.time.Clock()
 
 
@@ -177,28 +194,41 @@ def text():
         p_turn = 1
     if p2.TURN:
         p_turn = 2
+    textH1 = font.render(f'Player1 Health : {p1.health}', True, RED, BLACK)
+    textH2 = font.render(f'Player2 Health : {p2.health}', True, RED, BLACK)
     text = font.render(f'Player : {p_turn} / POW : {a.throw_power} / AN : {a.throw_angle}', True, GREEN, BLUE)
+    game = font.render(f'GAMEOVER', True, RED, WHITE)
     textRect = text.get_rect()
+    textgame = game.get_rect()
+    textRectH1 = textH1.get_rect()
+    textRectH2 = textH2.get_rect()
     textRect.center = (WIDTH // 2, HEIGHT // 2)
+    textgame.center = (WIDTH // 2, HEIGHT // 2)
+    textRectH1.topleft = (30,30)
+    textRectH2.topright = (WIDTH - 80,30)
     screen.blit(text, textRect)
+    screen.blit(textH1, textRectH1)
+    screen.blit(textH2, textRectH2)
+    if game_over:
+        screen.blit(game, textgame)
 
 
 
 def button():
-    if keys[pygame.K_w]:
-        a.throwset(1,0)
-    if keys[pygame.K_s]:
-        a.throwset(-1,0)
-    if keys[pygame.K_a]:
-        a.throwset(0,-1)
-    if keys[pygame.K_d]:
-        a.throwset(0,1)
-
+    global game_over
+    if not game_over:
+        if keys[pygame.K_w]:
+            a.throwset(1,0)
+        if keys[pygame.K_s]:
+            a.throwset(-1,0)
+        if keys[pygame.K_a]:
+            a.throwset(0,-1)
+        if keys[pygame.K_d]:
+            a.throwset(0,1)
     if keys[pygame.K_r]:
         char_setting()
+        game_over = False
 
-    if keys[pygame.K_b]:
-        p1.player_x += 20
 
 # Main game loop
 while True:
@@ -209,7 +239,7 @@ while True:
             pygame.quit()
             sys.exit()
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_f:
+            if event.key == pygame.K_f and not game_over:
                 a.throw()
 
     button()
@@ -234,6 +264,20 @@ while True:
 
     if a.check_collision():
         print(f'hit player{p_turn}')
+        if p_turn == 1:
+            p1.is_hit()
+            konk = random.randint(-5,-1)
+            p1.knockback(konk)
+            if p1.health <= 0:
+                game_over = True
+                p2.win = True
+        else:
+            p2.is_hit()
+            konk = random.randint(1, 5)
+            p2.knockback(konk)
+            if p2.health <= 0:
+                game_over = True
+                p1.win = True
         a.arrow_touch_ground = True
 
     # Clear the screen
